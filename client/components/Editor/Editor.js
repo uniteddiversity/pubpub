@@ -8,6 +8,8 @@ import { collabDocPluginKey } from './plugins/collaborative';
 import { getChangeObject } from './plugins/onChange';
 import { renderStatic, buildSchema } from './utils';
 
+import nodeViewThing from './testNodeview';
+
 require('./styles/base.scss');
 
 const propTypes = {
@@ -107,6 +109,9 @@ const Editor = (props) => {
 				handleClickOn: props.handleSingleClick,
 				handleDoubleClickOn: props.handleDoubleClick,
 				handleScrollToSelection: props.onScrollToSelection,
+				nodeViews: {
+					heading: (node, edView, getPos) => new nodeViewThing(node, edView, getPos),
+				},
 			},
 		);
 		// Sometimes the view will call its dispatchTransaction from the constructor, but the
