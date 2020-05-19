@@ -5,6 +5,7 @@ import buildCollaborative from './collaborative';
 import buildDomEvents from './domEvents';
 import buildFootnote from './footnote';
 import buildHeaderIds from './headerIds';
+import buildHashes from './hashes';
 import buildInputRules from './inputRules';
 import buildKeymap from './keymap';
 import buildLocalHighlights from './localHighlights';
@@ -34,7 +35,8 @@ export const requiredPlugins = {
 
 export const optionalPlugins = {
 	inputRules: buildInputRules,
-	headerIds: buildHeaderIds,
+	// headerIds: buildHeaderIds,
+	hashes: buildHashes,
 	placeholder: buildPlaceholder,
 	localHighlights: buildLocalHighlights,
 };

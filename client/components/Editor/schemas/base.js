@@ -11,6 +11,7 @@ export const baseNodes = {
 		group: 'block',
 		attrs: {
 			class: { default: null },
+			id: { default: '' },
 		},
 		parseDOM: [
 			{
@@ -27,7 +28,7 @@ export const baseNodes = {
 			/* The following check ensures spacing is maintained when server rendering */
 			const isEmpty = Array.isArray(node.content) && !node.content.length;
 			const children = isEmpty ? ['br'] : 0;
-			return ['p', { class: node.attrs.class }, children];
+			return ['p', { id: node.attrs.id, class: node.attrs.class }, children];
 		},
 	},
 	blockquote: {
@@ -103,6 +104,7 @@ export const baseNodes = {
 			},
 		],
 		toDOM: (node) => {
+			console.log('Running header');
 			return [`h${node.attrs.level}`, { id: node.attrs.fixedId || node.attrs.id }, 0];
 		},
 	},

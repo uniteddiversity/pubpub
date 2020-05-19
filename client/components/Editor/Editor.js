@@ -110,7 +110,7 @@ const Editor = (props) => {
 				handleDoubleClickOn: props.handleDoubleClick,
 				handleScrollToSelection: props.onScrollToSelection,
 				nodeViews: {
-					heading: (node, edView, getPos) => new nodeViewThing(node, edView, getPos),
+					citation: (node, edView, getPos) => new nodeViewThing(node, edView, getPos),
 				},
 			},
 		);
