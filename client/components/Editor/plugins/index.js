@@ -6,6 +6,7 @@ import buildDomEvents from './domEvents';
 import buildFootnote from './footnote';
 import buildHeaderIds from './headerIds';
 import buildHashes from './hashes';
+import buildDecTest from './decTest';
 import buildInputRules from './inputRules';
 import buildKeymap from './keymap';
 import buildLocalHighlights from './localHighlights';
@@ -31,6 +32,7 @@ export const requiredPlugins = {
 	collaborative: buildCollaborative,
 	citation: buildCitation,
 	footnote: buildFootnote,
+	decTest: buildDecTest,
 };
 
 export const optionalPlugins = {

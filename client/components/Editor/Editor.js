@@ -10,6 +10,9 @@ import { renderStatic, buildSchema } from './utils';
 
 import nodeViewThing from './testNodeview';
 
+import applyDevTools from "prosemirror-dev-tools";
+
+
 require('./styles/base.scss');
 
 const propTypes = {
@@ -114,6 +117,7 @@ const Editor = (props) => {
 				},
 			},
 		);
+		applyDevTools(view);
 		// Sometimes the view will call its dispatchTransaction from the constructor, but the
 		// function itself references the `view` variable bound above. So we need to set this
 		// prop immediately after it's constructed.
