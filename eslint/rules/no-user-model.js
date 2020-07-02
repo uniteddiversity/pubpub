@@ -3,10 +3,13 @@ const errorMessage =
 
 const propertyIsModelUser = (property) => {
 	const { key, value } = property;
-	const keyIsModel =
-		(key.type === 'Identifier' && key.name === 'model') ||
-		(key.type === 'Literal' && key.value === 'model');
-	return keyIsModel && value.name === 'User';
+	if (key && value) {
+		const keyIsModel =
+			(key.type === 'Identifier' && key.name === 'model') ||
+			(key.type === 'Literal' && key.value === 'model');
+		return keyIsModel && value.name === 'User';
+	}
+	return false;
 };
 
 const checkObjectLiteral = (objectNode, context) => {

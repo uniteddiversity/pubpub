@@ -66,6 +66,7 @@ export const getPubSearchData = async (pubIds) => {
 				required: false,
 				separate: true,
 				include: [
+					// eslint-disable-next-line pubpub-rules/no-user-model
 					{
 						model: User,
 						as: 'user',
