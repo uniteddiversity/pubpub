@@ -1,6 +1,13 @@
 import stopword from 'stopword';
 import stopWordList from './stopwords';
-import { Pub, Community, Branch, PubAttribution, User, Page } from '../../server/models';
+import {
+	Pub,
+	Community,
+	Branch,
+	PubAttribution,
+	Page,
+	includeUserModel,
+} from '../../server/models';
 import { getBranchDoc } from '../../server/utils/firebaseAdmin';
 import { getScope, getMembers } from '../../server/utils/queryHelpers';
 import { generatePlainAuthorString } from '../../client/components/PubPreview/pubPreviewUtils';
@@ -65,15 +72,7 @@ export const getPubSearchData = async (pubIds) => {
 				as: 'attributions',
 				required: false,
 				separate: true,
-				include: [
-					// eslint-disable-next-line pubpub-rules/no-user-model
-					{
-						model: User,
-						as: 'user',
-						required: false,
-						attributes: ['id', 'fullName'],
-					},
-				],
+				include: [includeUserModel({ as: 'user' })],
 			},
 			{
 				model: Branch,
