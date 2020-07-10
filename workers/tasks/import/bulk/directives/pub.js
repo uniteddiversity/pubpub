@@ -3,14 +3,16 @@ import fs from 'fs-extra';
 import path from 'path';
 import YAML from 'yaml';
 import tmp from 'tmp-promise';
+import { Op } from 'sequelize';
 import { Node, Fragment, Slice } from 'prosemirror-model';
 import { ReplaceStep } from 'prosemirror-transform';
 
 import { buildSchema, createFirebaseChange } from 'components/Editor/utils';
 import { getBranchRef } from 'server/utils/firebaseAdmin';
 import { createPub as createPubQuery } from 'server/pub/queries';
+import { createCollection } from 'server/collection/queries';
 import { createCollectionPub } from 'server/collectionPub/queries';
-import { Branch, PubAttribution } from 'server/models';
+import { Branch, Collection, PubAttribution } from 'server/models';
 import { extensionToPandocFormat, bibliographyFormats } from 'utils/import/formats';
 
 import { getFullPathsInDir, extensionFor } from '../../util';
@@ -116,21 +118,41 @@ const resolveDirectiveValues = async (directive, sourceFiles, rawMetadata) => {
 	return resolvedDirective;
 };
 
-const createPub = async ({
-	communityId,
-	directive,
-	proposedMetadata,
-	rawMetadata,
-	sourceFiles,
-}) => {
+const createPub = async ({ communityId, directive, proposedMetadata }) => {
 	const sources = getSourcesForAttributeStrategy(directive);
-	const resolvedDirective = await resolveDirectiveValues(directive, sourceFiles, rawMetadata);
 	const attributes = {
 		communityId: communityId,
 		...(sources.import && cloneWithKeys(proposedMetadata, pubAttributesFromMetadata)),
-		...(sources.directive && cloneWithKeys(resolvedDirective, pubAttributesFromDirective)),
+		...(sources.directive && cloneWithKeys(directive, pubAttributesFromDirective)),
 	};
 	return createPubQuery(attributes);
+};
+
+const createPubTags = async (directive, pubId, communityId) => {
+	const { tags } = directive;
+	if (tags) {
+		return Promise.all(
+			tags.map(async (tagName) => {
+				const existingCollection = await Collection.findOne({
+					where: {
+						title: {
+							[Op.iLike]: tagName,
+						},
+					},
+				});
+				const tag =
+					existingCollection ||
+					(await createCollection({
+						communityId: communityId,
+						title: tagName,
+						kind: 'tag',
+					}));
+				await createCollectionPub({ collectionId: tag.id, pubId: pubId });
+				return existingCollection ? null : tag;
+			}),
+		).then((createdTags) => createdTags.filter((x) => x));
+	}
+	return [];
 };
 
 const gatherLocalSourceFilesForPub = async (targetPath, isTargetDirectory) => {
@@ -335,22 +357,28 @@ export const resolvePubDirective = async ({ directive, targetPath, community, co
 		importerFlags: importerFlags,
 		provideRawMetadata: true,
 	});
+
+	const resolvedDirective = await resolveDirectiveValues(directive, sourceFiles, rawMetadata);
+
 	const pub = await createPub({
 		communityId: community.id,
-		directive: directive,
+		directive: resolvedDirective,
 		proposedMetadata: proposedMetadata,
-		rawMetadata: rawMetadata,
-		sourceFiles: sourceFiles,
 	});
-	await createPubAttributions(pub, proposedMetadata, directive);
+
+	await createPubAttributions(pub, proposedMetadata, resolvedDirective);
 	await writeDocumentToPubDraft(pub.id, doc);
+
+	const createdTags = await createPubTags(resolvedDirective, pub.id);
 	if (collection) {
 		await createCollectionPub({ collectionId: collection.id, pubId: pub.id, isPrimary: true });
 	}
+
 	// eslint-disable-next-line no-console
 	console.log('created Pub:', pub.title);
 	return {
 		pub: pub,
+		collection: createdTags,
 		warnings: warnings,
 		created: true,
 	};
