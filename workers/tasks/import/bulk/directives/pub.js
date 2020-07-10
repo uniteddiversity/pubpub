@@ -122,7 +122,7 @@ const createPub = async ({
 	sourceFiles,
 }) => {
 	const sources = getSourcesForAttributeStrategy(directive);
-	const resolvedDirective = resolveDirectiveValues(directive, sourceFiles, rawMetadata);
+	const resolvedDirective = await resolveDirectiveValues(directive, sourceFiles, rawMetadata);
 	const attributes = {
 		communityId: communityId,
 		...(sources.import && cloneWithKeys(proposedMetadata, pubAttributesFromMetadata)),
