@@ -369,7 +369,7 @@ export const resolvePubDirective = async ({ directive, targetPath, community, co
 	await createPubAttributions(pub, proposedMetadata, resolvedDirective);
 	await writeDocumentToPubDraft(pub.id, doc);
 
-	const createdTags = await createPubTags(resolvedDirective, pub.id);
+	const createdTags = await createPubTags(resolvedDirective, pub.id, community.id);
 	if (collection) {
 		await createCollectionPub({ collectionId: collection.id, pubId: pub.id, isPrimary: true });
 	}
