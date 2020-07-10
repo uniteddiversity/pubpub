@@ -49,3 +49,9 @@ export const getProposedMetadata = async (meta) => {
 		metadata: pubMetadata !== undefined && metaValueToJsonSerializable(pubMetadata),
 	});
 };
+
+export const getRawMetadata = async (meta) => {
+	return Object.fromEntries(
+		Object.entries(meta).map(([key, value]) => [key, metaValueToJsonSerializable(value)]),
+	);
+};

@@ -82,33 +82,51 @@ const createPubAttributions = async (pub, proposedMetadata, directive) => {
 	);
 };
 
-const resolveAndUploadLocalFile = async (pathLike, sourceFiles) => {
-	const sourceFile = sourceFiles.find((sf) => pathMatchesPattern(sf.clientPath, pathLike));
-	if (sourceFile) {
-		const assetKey = await uploadFileToAssetStore(sourceFile.tmpPath);
-		return getUrlForAssetKey(assetKey);
+const resolveDirectiveValue = async (value, context) => {
+	const { $sourceFile, $metadata } = value;
+	const { sourceFiles, rawMetadata } = context;
+	if ($sourceFile) {
+		const pathLike = await resolveDirectiveValue($sourceFile, context);
+		const sourceFile = sourceFiles.find((sf) => pathMatchesPattern(sf.clientPath, pathLike));
+		if (sourceFile) {
+			const assetKey = await uploadFileToAssetStore(sourceFile.tmpPath);
+			return getUrlForAssetKey(assetKey);
+		}
+		console.warn(`warning: cannot find sourceFile matching ${pathLike}`);
+		return null;
 	}
-	console.warn(`warning: cannot find sourceFile matching ${pathLike}`);
-	return null;
+	if ($metadata) {
+		const key = resolveDirectiveValue($metadata, context);
+		return rawMetadata[key];
+	}
+	return value;
 };
 
-const resolveUploadablePubAttributes = async (directive, sourceFiles) => {
-	const { avatar, headerBackgroundImage } = directive;
-	return {
-		avatar: avatar && (await resolveAndUploadLocalFile(avatar, sourceFiles)),
-		headerBackgroundImage:
-			headerBackgroundImage &&
-			(await resolveAndUploadLocalFile(headerBackgroundImage, sourceFiles)),
-	};
+const resolveDirectiveValues = async (directive, sourceFiles, rawMetadata) => {
+	const resolvedDirective = {};
+	const context = { sourceFiles: sourceFiles, rawMetadata: rawMetadata };
+	await Promise.all(
+		Object.entries(directive).map(async ([key, value]) => {
+			const resolvedValue = await resolveDirectiveValue(value, context);
+			resolvedDirective[key] = resolvedValue;
+		}),
+	);
+	return resolvedDirective;
 };
 
-const createPub = async ({ communityId, directive, proposedMetadata, resolvedAttributes }) => {
+const createPub = async ({
+	communityId,
+	directive,
+	proposedMetadata,
+	rawMetadata,
+	sourceFiles,
+}) => {
 	const sources = getSourcesForAttributeStrategy(directive);
+	const resolvedDirective = resolveDirectiveValues(directive, sourceFiles, rawMetadata);
 	const attributes = {
 		communityId: communityId,
 		...(sources.import && cloneWithKeys(proposedMetadata, pubAttributesFromMetadata)),
-		...(sources.directive && cloneWithKeys(directive, pubAttributesFromDirective)),
-		...resolvedAttributes,
+		...(sources.directive && cloneWithKeys(resolvedDirective, pubAttributesFromDirective)),
 	};
 	return createPubQuery(attributes);
 };
@@ -309,17 +327,18 @@ export const resolvePubDirective = async ({ directive, targetPath, community, co
 	const { importerFlags = {} } = directive;
 	const sourceFiles = await getImportableFiles(directive, targetPath);
 	const tmpDir = await tmp.dir();
-	const { doc, warnings, proposedMetadata } = await importFiles({
+	const { doc, warnings, proposedMetadata, rawMetadata } = await importFiles({
 		tmpDirPath: tmpDir.path,
 		sourceFiles: sourceFiles,
 		importerFlags: importerFlags,
+		provideRawMetadata: true,
 	});
-	const resolvedAttributes = await resolveUploadablePubAttributes(directive, sourceFiles);
 	const pub = await createPub({
 		communityId: community.id,
 		directive: directive,
 		proposedMetadata: proposedMetadata,
-		resolvedAttributes: resolvedAttributes,
+		rawMetadata: rawMetadata,
+		sourceFiles: sourceFiles,
 	});
 	await createPubAttributions(pub, proposedMetadata, directive);
 	await writeDocumentToPubDraft(pub.id, doc);
