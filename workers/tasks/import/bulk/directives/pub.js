@@ -96,7 +96,7 @@ const resolveDirectiveValue = async (value, context) => {
 		return null;
 	}
 	if ($metadata) {
-		const key = resolveDirectiveValue($metadata, context);
+		const key = await resolveDirectiveValue($metadata, context);
 		return rawMetadata[key];
 	}
 	return value;
