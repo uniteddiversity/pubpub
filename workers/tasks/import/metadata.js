@@ -50,7 +50,7 @@ export const getProposedMetadata = async (meta) => {
 	});
 };
 
-export const getRawMetadata = async (meta) => {
+export const getRawMetadata = (meta) => {
 	return Object.fromEntries(
 		Object.entries(meta).map(([key, value]) => [key, metaValueToJsonSerializable(value)]),
 	);
