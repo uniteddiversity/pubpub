@@ -23,16 +23,18 @@ import { getAttributionAttributes, cloneWithKeys } from './util';
 
 const pubAttributesFromMetadata = ['title', 'description', 'slug', 'customPublishedAt', 'metadata'];
 const pubAttributesFromDirective = [
-	'title',
-	'description',
-	'slug',
-	'headerStyle',
-	'headerBackgroundColor',
-	'customPublishedAt',
-	'doi',
-	'licenseSlug',
-	'citationStyle',
+	'avatar',
 	'citationInlineStyle',
+	'citationStyle',
+	'customPublishedAt',
+	'description',
+	'doi',
+	'headerBackgroundColor',
+	'headerBackgroundImage',
+	'headerStyle',
+	'licenseSlug',
+	'slug',
+	'title',
 ];
 const documentExtensions = Object.keys(extensionToPandocFormat);
 const documentSchema = buildSchema();
