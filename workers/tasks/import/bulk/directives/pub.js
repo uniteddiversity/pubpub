@@ -64,10 +64,16 @@ const createPubAttributions = async (pub, proposedMetadata, directive) => {
 	const sources = getSourcesForAttributeStrategy(directive);
 	let attributionsAttrs = [];
 	if (sources.import) {
-		const matchedProposedAttributions = proposedAttributions.map(({ name, users }) => {
-			const matchedUser = users.find((user) => matchSlugsToAttributions.includes(user.slug));
-			const userId = matchedUser && matchedUser.id;
-			return { name: name, userId: userId };
+		const matchedProposedAttributions = proposedAttributions.map((proposedAttr) => {
+			const { name, users } = proposedAttr;
+			if (users) {
+				const matchedUser = users.find((user) =>
+					matchSlugsToAttributions.includes(user.slug),
+				);
+				const userId = matchedUser && matchedUser.id;
+				return { name: name, userId: userId };
+			}
+			return proposedAttr;
 		});
 		attributionsAttrs = [...attributionsAttrs, ...matchedProposedAttributions];
 	}

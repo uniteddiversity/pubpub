@@ -440,6 +440,8 @@ headerBackgroundImage:
 
 **`importerFlags: string[]`**: flags passed to the importer (the same ones available from the `Meta+/` "nerd mode" menu in the single-Pub importer).
 
+**`tags: string[]`**: a list of collections by title that will be applied to the Pub (creating a Tag collection if necessary)
+
 **`macros: {
     [regex: string]: string | {define: [string, string]}
 }`**: [see more](#macros)

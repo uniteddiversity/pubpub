@@ -8,7 +8,7 @@ const getAuthorsArray = (author) => {
 	if (author.type === 'MetaList') {
 		return author.content;
 	}
-	if (author.type === 'MetaInlines') {
+	if (author.type === 'MetaInlines' || author.type === 'MetaMap') {
 		return [author];
 	}
 	return null;
