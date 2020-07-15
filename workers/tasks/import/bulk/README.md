@@ -249,7 +249,7 @@ resolve:
       into: http://my-site.com/wp-content/
 ```
 
-**Important:** paths given to `resolve` are relative to the file or directory matched by the directive, not to the file in which the directive is written._ For instance, given the following structure:
+**Important:** paths given to `resolve` are relative to the file or directory matched by the directive, not to the file in which the directive is written. For instance, given the following structure:
 
 ```
 my-import/
@@ -329,6 +329,68 @@ macros:
 
 This can be helpful for mocking out some complicated TeX commands that Pandoc doesn't support, as described in [Mocking Latex Commands](#mocking-latex-commands).
 
+## The special `$metadata` and `$sourceFile` values
+
+Not all potentially useful directive options have statically-known values. You might, for instance, want to extract the description for a Pub from its embedded metadata header. Typically, this is only possible if the embedded description has the key `subtitle` — more commonly used in Pandoc-flavored markdown — but the `$metadata` option gives us more flexibility. In place of a string, you may pass an object like `{ $metadata: 'key' }` as a directive value, and its value will be taken from the metadata extracted from the imported document. In the example files below, the document itself has metadata we wish to use as the Pub's description:
+
+```
+---
+title: Please import me
+summary: Blah blah BLAH blah blah...
+---
+<h1>Lorem Ipsum Dolor Sid Amet...</h1>
+```
+
+The following Pub directive will extract the `summary` value (`"Blah blah BLAH..."`) as the Pub's `description`:
+
+```yaml
+# config.pubpub.yaml
+type: pub
+description:
+  $metadata: summary
+```
+
+The other special value of this kind of `$sourceFile`. It means "give me the URL of the uploaded source file corresponding to this path". In this example, every document to be imported is paired with an `thumb.png`:
+
+```
+import-root/
+  document-one/
+    doc.html
+    thumb.png
+  document-two/
+    doc.html
+    thumb.png
+```
+
+The following Pub directive will cause the corresponding `thumb.png` files to be used as the Pub's `avatar`:
+
+```yaml
+# config.pubpubb.yaml
+children:
+  "*/doc.html":
+    type: pub
+    avatar:
+      $sourceFile: thumb.png
+```
+
+Note that these special values can be composed, to useful effect. We might find a file specified in the document metadata:
+
+```
+---
+coverImage: cover-image-for-this-post.jpg
+---
+```
+
+We can extract the relative file path with `$metadata` and tell the importer to upload the resolved file as the Pub's `headerBackgroundImage` as follows: 
+
+```yaml
+# config.pubpub.yaml
+type: pub
+headerBackgroundImage:
+  $sourceFile:
+    $metadata: coverImage
+```
+
 # Directive options
 
 **`type: string`**: universally required. One of `pub`, `collection`, `community`.
@@ -386,13 +448,13 @@ _The remainder of the options map directly to attributes on the Pub model._
 
 **`description: string`**
 
-**`avatar: string`**: a path (supports wildcards) to a local file.
+**`avatar: string`**
 
 **`headerStyle: string`**
 
 **`headerBackgroundColor: string`**
 
-**`headerBackgroundImage: string`**: a path (supports wildcards) to a local file.
+**`headerBackgroundImage: string`**
 
 **`customPublishedAt: string`**: a date given in ISO 8601 format.
 
