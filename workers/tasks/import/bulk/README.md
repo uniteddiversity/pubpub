@@ -274,6 +274,8 @@ children:
 
 The thing to note here is `../images` is the relative path from `my-first-post.md`, rather than from `config.pubpub.yaml`.
 
+If a path under `resolve` does not lead to a file or directory, it will throw an error. You can silence the error and press onward with the import by specifying the `ignoreIfMissing: true` option under the path.
+
 ## Attributes
 
 Pub directives can contain basic metadata information like:
@@ -422,7 +424,7 @@ headerBackgroundImage:
 **`matchSlugsToAttributions: string[]`**: a list of PubPub slugs that will be cross-refrenced to possibly create user-linked `PubAttribution` objects from names found in imported attribution metadata. Potentially useful when importing a large Community with a few recurring names.
 
 **`resolve: {
-    [relativePath: string]: {as: string} | {into: string} & {label?: string}
+    [relativePath: string]: ({as: string} | {into: string}) & {label?: string, ignoreIfMissing?: boolean}
 }[]`**: [see more](#the-resolve-option)
 
 **`labels: {

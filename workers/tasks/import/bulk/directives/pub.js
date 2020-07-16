@@ -97,10 +97,14 @@ const resolveDirectiveValue = async (value, context) => {
 	const { sourceFiles, rawMetadata } = context;
 	if ($sourceFile) {
 		const pathLike = await resolveDirectiveValue($sourceFile, context);
-		const sourceFile = sourceFiles.find((sf) => pathMatchesPattern(sf.clientPath, pathLike));
-		if (sourceFile) {
-			const assetKey = await uploadFileToAssetStore(sourceFile.tmpPath);
-			return getUrlForAssetKey(assetKey);
+		if (pathLike) {
+			const sourceFile = sourceFiles.find((sf) =>
+				pathMatchesPattern(sf.clientPath, pathLike),
+			);
+			if (sourceFile) {
+				const assetKey = await uploadFileToAssetStore(sourceFile.tmpPath);
+				return getUrlForAssetKey(assetKey);
+			}
 		}
 		console.warn(`warning: cannot find sourceFile matching ${pathLike}`);
 		return null;
@@ -171,9 +175,9 @@ const gatherLocalSourceFilesForPub = async (targetPath, isTargetDirectory) => {
 };
 
 const gatherNonLocalSourceFilesForPub = async (targetPath, isTargetDirectory, directive) => {
-	const { resolve: sources } = directive;
+	const { resolve: sourcesToResolve } = directive;
 
-	if (!sources) {
+	if (!sourcesToResolve) {
 		return [];
 	}
 
@@ -194,10 +198,26 @@ const gatherNonLocalSourceFilesForPub = async (targetPath, isTargetDirectory, di
 		return { relativePathToEntrypoint: relativePathToEntrypoint, options: options };
 	};
 
+	const safeStat = async (fullPathToEntrypoint, swallowError) => {
+		try {
+			const stat = await fs.stat(fullPathToEntrypoint);
+			return stat;
+		} catch (err) {
+			if (swallowError) {
+				return null;
+			}
+			throw err;
+		}
+	};
+
 	const resolveEntry = async (entry) => {
 		const { relativePathToEntrypoint, options } = getRelativePathAndOptions(entry);
 		const fullPathToEntrypoint = path.join(fullPathToTargetDirectory, relativePathToEntrypoint);
-		const stat = await fs.stat(fullPathToEntrypoint);
+		const stat = await safeStat(fullPathToEntrypoint, options.ignoreIfMissing);
+
+		if (!stat) {
+			return [];
+		}
 
 		const resolveFile = (fullPathToFile) => {
 			const { as, into, label } = options;
@@ -217,7 +237,7 @@ const gatherNonLocalSourceFilesForPub = async (targetPath, isTargetDirectory, di
 		return [resolveFile(fullPathToEntrypoint)];
 	};
 
-	return Promise.all(sources.map(resolveEntry)).then((arr) =>
+	return Promise.all(sourcesToResolve.map(resolveEntry)).then((arr) =>
 		arr.reduce((a, b) => [...a, ...b], []),
 	);
 };
