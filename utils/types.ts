@@ -281,6 +281,28 @@ export type Community = {
 	pubs?: Pub[];
 };
 
+export type DiscussionAnchor = {
+	id: string;
+	discussionId: string;
+	historyKey: number;
+	selection: {};
+	originalText: string;
+	isOriginal: boolean;
+};
+
+export type Discussion = {
+	id: string;
+	title: string;
+	number: number;
+	isClosed: boolean;
+	labels: string[];
+	threadId: string;
+	visibilityId: string;
+	userId: string;
+	pubId: string;
+	anchors?: DiscussionAnchor[];
+};
+
 export type ScopeData = {
 	activePermissions: {
 		activePermission: MemberPermission;
