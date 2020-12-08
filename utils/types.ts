@@ -285,7 +285,7 @@ export type DiscussionAnchor = {
 	id: string;
 	discussionId: string;
 	historyKey: number;
-	selection: {};
+	selection: null | {};
 	originalText: string;
 	isOriginal: boolean;
 };

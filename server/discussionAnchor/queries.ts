@@ -19,6 +19,15 @@ export const createUpdatedDiscussionAnchorForNewSteps = async (
 	historyKey: number,
 ) => {
 	const { originalText, discussionId, selection: previousSelectionSerialized } = anchor;
+	if (!previousSelectionSerialized) {
+		return DiscussionAnchor.create({
+			historyKey: historyKey,
+			discussionId: discussionId,
+			originalText: originalText,
+			selection: null,
+			isOriginal: false,
+		});
+	}
 	const mapping = new Mapping(steps.map((step) => step.getMap()));
 	const previousSelection = Selection.fromJSON(doc, previousSelectionSerialized);
 	const nextSelection = previousSelection.map(doc, mapping);

@@ -1,16 +1,36 @@
-/* global describe, it, expect */
+/* global describe, it, expect, beforeAll */
+import { modelize, setup } from 'stubstub';
 
 import { buildSchema } from 'client/components/Editor';
 import { Fragment, Node, Slice } from 'prosemirror-model';
 import { TextSelection } from 'prosemirror-state';
 import { ReplaceStep } from 'prosemirror-transform';
+
 import {
 	createOriginalDiscussionAnchor,
 	createUpdatedDiscussionAnchorForNewSteps,
 } from '../queries';
 
+const models = modelize`
+	Community {
+		Pub {
+			DiscussionNew discussion {
+				number: 1
+                author: User {}
+                Visibility {
+                    access: "public"
+                }
+				Thread {}
+			}
+		}
+	}
+`;
+
+setup(beforeAll, async () => {
+	await models.resolve();
+});
+
 const schema = buildSchema();
-const discussionId = 'fd696f73-a1fc-4ffe-88bd-455736457c05';
 
 const originalDoc = Node.fromJSON(schema, {
 	type: 'doc',
@@ -30,6 +50,9 @@ const replaceStep2 = new ReplaceStep(1, 13, Slice.empty);
 
 describe('createUpdatedDiscussionAnchorForNewSteps', () => {
 	it('repeatedly updates an anchor for a discussion', async () => {
+		const {
+			discussion: { id: discussionId },
+		} = models;
 		const firstAnchor = await createOriginalDiscussionAnchor(
 			discussionId,
 			1,
@@ -66,14 +89,22 @@ describe('createUpdatedDiscussionAnchorForNewSteps', () => {
 			firstAnchor,
 			originalDoc,
 			[replaceStep2],
-			3,
+			2,
 		);
 		expect(thirdAnchor).toMatchObject({
 			discussionId: discussionId,
-			historyKey: 3,
+			historyKey: 2,
 			isOriginal: false,
 			selection: null,
 			originalText: 'foo',
 		});
+		// Check whether we can still updates to an anchor with a null selection
+		const fourthAnchor = await createUpdatedDiscussionAnchorForNewSteps(
+			{ ...firstAnchor.toJSON(), selection: null },
+			originalDoc,
+			[replaceStep2],
+			2,
+		);
+		expect(fourthAnchor).toMatchObject({ historyKey: 2, selection: null, originalText: 'foo' });
 	});
 });
