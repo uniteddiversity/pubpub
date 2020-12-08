@@ -14,7 +14,7 @@ import {
 const models = modelize`
 	Community {
 		Pub {
-			DiscussionNew discussion {
+			Discussion discussion {
 				number: 1
                 author: User {}
                 Visibility {

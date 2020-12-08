@@ -66,7 +66,6 @@ export const Signup = sequelize.import('./signup/model.js');
 // export const ThreadUser = sequelize.import('./threadUser/model.js');
 
 export const DiscussionAnchor = sequelize.import('./discussionAnchor/model.ts');
-export const DiscussionNew = sequelize.import('./discussion/modelNew.js');
 export const Anchor = sequelize.import('./anchor/model.js');
 export const ReviewNew = sequelize.import('./review/modelNew.js');
 export const Fork = sequelize.import('./fork/model.js');
