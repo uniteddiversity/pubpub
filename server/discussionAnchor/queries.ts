@@ -44,16 +44,29 @@ export const createUpdatedDiscussionAnchorForNewSteps = async (
 	});
 };
 
-export const createOriginalDiscussionAnchor = async (
-	discussionId: string,
-	historyKey: number,
-	selectionJson: {},
-	originalText?: string,
-) =>
+export const createOriginalDiscussionAnchor = async ({
+	discussionId,
+	historyKey,
+	selectionJson,
+	originalText = '',
+	originalTextPrefix = '',
+	originalTextSuffix = '',
+}: {
+	discussionId: string;
+	historyKey: number;
+	selectionJson: { head: number; anchor: number };
+	originalText: string;
+	originalTextPrefix?: string;
+	originalTextSuffix?: string;
+}) => {
+	const { head, anchor } = selectionJson;
 	DiscussionAnchor.create({
 		discussionId: discussionId,
 		historyKey: historyKey,
-		selection: selectionJson,
+		selection: head === anchor ? null : selectionJson,
 		originalText: originalText,
+		originalTextPrefix: originalTextPrefix,
+		originalTextSuffix: originalTextSuffix,
 		isOriginal: true,
 	});
+};

@@ -53,12 +53,12 @@ describe('createUpdatedDiscussionAnchorForNewSteps', () => {
 		const {
 			discussion: { id: discussionId },
 		} = models;
-		const firstAnchor = await createOriginalDiscussionAnchor(
-			discussionId,
-			1,
-			initialSelection,
-			'foo',
-		);
+		const firstAnchor = await createOriginalDiscussionAnchor({
+			discussionId: discussionId,
+			historyKey: 1,
+			selectionJson: initialSelection as any,
+			originalText: 'foo',
+		});
 		expect(firstAnchor).toMatchObject({
 			discussionId: discussionId,
 			historyKey: 1,

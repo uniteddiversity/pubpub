@@ -1,6 +1,6 @@
 export default (sequelize, dataTypes) => {
 	return sequelize.define(
-		'Discussion',
+		'DiscussionNew',
 		{
 			id: sequelize.idType,
 			title: { type: dataTypes.TEXT },
