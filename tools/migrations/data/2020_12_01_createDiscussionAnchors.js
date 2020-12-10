@@ -1,9 +1,11 @@
 /* eslint-disable no-console */
+import { Op } from 'sequelize';
+
 import { Anchor, Branch, Pub, Release, Discussion } from 'server/models';
 import { getBranchRef } from 'server/utils/firebaseAdmin';
 import { uncompressSelectionJSON } from 'prosemirror-compress-pubpub';
 
-import { forEach, forEachInstance } from '../util';
+import { forEach } from '../util';
 
 const getAnchorDescsFromSingleFirebaseDiscussion = (firebaseDiscussion, isPublicBranch) => {
 	if (firebaseDiscussion) {
@@ -74,7 +76,7 @@ const handlePub = async (pub) => {
 	await forEach(branches, async (branch) => {
 		const branchRef = getBranchRef(pub.id, branch.id);
 		const discussionsSnapshot = await branchRef.child('discussions').once('value');
-		const firebaseDiscussions = discussionsSnapshot.val();
+		const firebaseDiscussions = discussionsSnapshot.val() || {};
 		const isPublicBranch = branch === publicBranch;
 		const branchAnchorDescs = getAnchorDescsFromFirebaseDiscussions({
 			discussions: discussions,
@@ -108,5 +110,9 @@ const handlePub = async (pub) => {
 };
 
 module.exports = async () => {
-	await forEachInstance(Pub, handlePub);
+	const discussions = await Discussion.findAll({ attributes: ['id', 'pubId'] });
+	const pubIdsWithDiscussions = [...new Set(discussions.map((d) => d.pubId))];
+	console.log(pubIdsWithDiscussions.length);
+	// const pubs = await Pub.findAll({ where: { id: { [Op.in]: pubIdsWithDiscussions } } });
+	// await forEach(pubs, (p) => handlePub(p).catch((err) => console.error(err)));
 };
