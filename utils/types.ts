@@ -130,6 +130,11 @@ export type Branch = {
 	maintenanceDocId?: string;
 };
 
+export type Doc = {
+	id: string;
+	content: {};
+};
+
 export type Release = {
 	id: string;
 	noteContent?: {};
@@ -142,6 +147,9 @@ export type Release = {
 	sourceBranchKey: number;
 	createdAt: string;
 	updatedAt: string;
+	historyKey: number;
+	docId: string;
+	doc?: Doc;
 };
 
 export type PubVersion = {

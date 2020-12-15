@@ -17,6 +17,7 @@ export const createUpdatedDiscussionAnchorForNewSteps = async (
 	doc: Node,
 	steps: Step[],
 	historyKey: number,
+	postgresTxn: any = null,
 ) => {
 	const { originalText, discussionId, selection: previousSelectionSerialized } = anchor;
 	if (!previousSelectionSerialized) {
@@ -35,13 +36,16 @@ export const createUpdatedDiscussionAnchorForNewSteps = async (
 	// un-anchored -- we still create an anchor to express this information so we don't spend time
 	// recalculating it.
 	const nextSelectionSerialized = nextSelection.empty ? null : nextSelection.toJSON();
-	return DiscussionAnchor.create({
-		historyKey: historyKey,
-		discussionId: discussionId,
-		originalText: originalText,
-		selection: nextSelectionSerialized,
-		isOriginal: false,
-	});
+	return DiscussionAnchor.create(
+		{
+			historyKey: historyKey,
+			discussionId: discussionId,
+			originalText: originalText,
+			selection: nextSelectionSerialized,
+			isOriginal: false,
+		},
+		{ transaction: postgresTxn },
+	);
 };
 
 export const createOriginalDiscussionAnchor = async ({
@@ -60,7 +64,7 @@ export const createOriginalDiscussionAnchor = async ({
 	originalTextSuffix?: string;
 }) => {
 	const { head, anchor } = selectionJson;
-	DiscussionAnchor.create({
+	return DiscussionAnchor.create({
 		discussionId: discussionId,
 		historyKey: historyKey,
 		selection: head === anchor ? null : selectionJson,
