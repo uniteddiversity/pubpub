@@ -8,7 +8,7 @@ const getRequestValues = (req) => {
 	const user = req.user || {};
 	const {
 		communityId,
-		draftKey,
+		historyKey,
 		makeDraftDiscussionsPublic,
 		noteContent,
 		noteText,
@@ -16,7 +16,7 @@ const getRequestValues = (req) => {
 	} = req.body;
 	return {
 		communityId: communityId,
-		draftKey: draftKey,
+		historyKey: historyKey,
 		makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		noteContent: noteContent,
 		noteText: noteText,
@@ -30,7 +30,7 @@ app.post(
 	wrap(async (req, res) => {
 		const {
 			communityId,
-			draftKey,
+			historyKey,
 			makeDraftDiscussionsPublic,
 			noteContent,
 			noteText,
@@ -51,7 +51,7 @@ app.post(
 			const release = await createRelease({
 				userId: userId,
 				pubId: pubId,
-				draftKey: draftKey,
+				historyKey: historyKey,
 				noteText: noteText,
 				noteContent: noteContent,
 				makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,

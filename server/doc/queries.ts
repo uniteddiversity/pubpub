@@ -1,5 +1,5 @@
 import { Doc } from 'server/models';
 
-export const createDoc = (content: {}, postgresTransaction: any = null) => {
-	return Doc.create({ content: content }, { transaction: postgresTransaction });
+export const createDoc = (content: {}, sequelizeTransaction: any = null) => {
+	return Doc.create({ content: content }, { transaction: sequelizeTransaction });
 };

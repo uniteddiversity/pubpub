@@ -15,6 +15,14 @@ import { getStepsInChangeRange, getDocFromJson } from 'server/utils/firebase';
 import { createUpdatedDiscussionAnchorForNewSteps } from 'server/discussionAnchor/queries';
 import { Maybe, Release as ReleaseType, DefinitelyHas } from 'utils/types';
 
+type ReleaseErrorReason = 'merge-failed' | 'duplicate-release';
+export class ReleaseQueryError extends Error {
+	// eslint-disable-next-line no-useless-constructor
+	constructor(reason: ReleaseErrorReason) {
+		super(reason);
+	}
+}
+
 const getBranchesForPub = async (pubId: string) => {
 	const pubBranches = await Branch.findAll({ where: { pubId: pubId } });
 	const draftBranch = pubBranches.find((branch) => branch.title === 'draft');
@@ -28,7 +36,7 @@ const getPubDraftDoc = async (pubId: string, draftBranchId: string, historyKey: 
 
 const getStepsSinceLastRelease = async (
 	draftRef: admin.database.Reference,
-	previousRelease: Maybe<DefinitelyHas<ReleaseType, 'doc'>>,
+	previousRelease: Maybe<ReleaseType>,
 	currentHistoryKey: number,
 ) => {
 	if (previousRelease) {
@@ -72,12 +80,13 @@ const createDiscussionAnchorsForRelease = async (
 	}
 };
 
-const createReleaseNew = async ({
+export const createRelease = async ({
 	userId,
 	pubId,
 	historyKey,
 	noteContent,
 	noteText,
+	makeDraftDiscussionsPublic,
 	createExports = true,
 }) => {
 	const mostRecentRelease = await Release.findOne({
@@ -119,89 +128,11 @@ const createReleaseNew = async ({
 		return nextRelease;
 	});
 
-	if (createExports) {
-		await createBranchExports(pubId, publicBranch.id);
-	}
-
-	return release;
-};
-
-type ReleaseErrorReason = 'merge-failed' | 'duplicate-release';
-export class ReleaseQueryError extends Error {
-	// eslint-disable-next-line no-useless-constructor
-	constructor(reason: ReleaseErrorReason) {
-		super(reason);
-	}
-}
-
-export const createRelease = async ({
-	userId,
-	pubId,
-	draftKey,
-	noteContent,
-	noteText,
-	makeDraftDiscussionsPublic,
-	createExports = true,
-}) => {
-	const pubBranches = await Branch.findAll({ where: { pubId: pubId } });
-	const draftBranch = pubBranches.find((branch) => branch.title === 'draft');
-	const publicBranch = pubBranches.find((branch) => branch.title === 'public');
-
-	if (!draftBranch || !publicBranch) {
-		throw new Error('Cannot create a release on a Pub without a draft and public branch.');
-	}
-
-	if (!draftKey && draftKey !== 0) {
-		// eslint-disable-next-line no-param-reassign
-		draftKey = await getLatestKey(pubId, draftBranch.id);
-	}
-
-	const existingRelease = await Release.findOne({
-		where: {
-			pubId: pubId,
-			sourceBranchId: draftBranch.id,
-			sourceBranchKey: draftKey,
-		},
-	});
-
-	if (existingRelease) {
-		throw new ReleaseQueryError('duplicate-release');
-	}
-
-	const mergeResult = await mergeFirebaseBranch(
-		pubId,
-		draftBranch.id,
-		publicBranch.id,
-		makeDraftDiscussionsPublic,
-	);
-
-	if (!mergeResult) {
-		throw new ReleaseQueryError('merge-failed');
-	}
-
-	const { mergeKey, doc } = mergeResult;
-	const docModel = await createDoc(doc);
-
-	const newRelease = await Release.create({
-		noteContent: noteContent,
-		noteText: noteText,
-		sourceBranchId: draftBranch.id,
-		sourceBranchKey: draftKey,
-		historyKey: draftKey,
-		branchId: publicBranch.id,
-		branchKey: mergeKey,
-		userId: userId,
-		pubId: pubId,
-		docId: docModel.id,
-	});
+	await mergeFirebaseBranch(pubId, draftBranch.id, publicBranch.id, makeDraftDiscussionsPublic);
 
 	if (createExports) {
 		await createBranchExports(pubId, publicBranch.id);
 	}
 
-	if (makeDraftDiscussionsPublic) {
-		await updateVisibilityForDiscussions({ pubId: pubId }, { access: 'public' });
-	}
-
-	return newRelease.toJSON();
+	return release.toJSON();
 };

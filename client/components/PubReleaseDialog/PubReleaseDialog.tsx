@@ -18,26 +18,22 @@ import { usePageContext } from 'utils/hooks';
 
 import { apiFetch } from 'client/utils/apiFetch';
 import { ClickToCopyButton, MinimalEditor } from 'components';
+import { Release, PubPageData } from 'utils/types';
 
 require('./pubReleaseDialog.scss');
 
-type OwnProps = {
+type Props = {
 	historyData: {
 		latestKey?: number;
 	};
 	isOpen: boolean;
-	pubData: {
-		id?: string;
-		releases?: { createdAt?: string }[];
-	};
-	onClose: (...args: any[]) => any;
-	updatePubData: (...args: any[]) => any;
+	pubData: PubPageData;
+	onClose: () => unknown;
+	onCreateRelease: (r: Release) => unknown;
 };
 
-const defaultProps = {};
-
 const createRelease = ({
-	draftKey,
+	historyKey,
 	pubId,
 	communityId,
 	noteContent,
@@ -51,52 +47,43 @@ const createRelease = ({
 			communityId: communityId,
 			noteContent: noteContent,
 			noteText: noteText,
-			draftKey: draftKey,
+			historyKey: historyKey,
 			makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		}),
 	});
 
-type Props = OwnProps & typeof defaultProps;
-
 const PubReleaseDialog = (props: Props) => {
-	const { isOpen, onClose, historyData, pubData, updatePubData } = props;
+	const { isOpen, onClose, historyData, pubData, onCreateRelease } = props;
 	const {
 		communityData,
 		scopeData: {
 			activePermissions: { isSuperAdmin },
 		},
 	} = usePageContext();
-	const [noteData, setNoteData] = useState({});
+	const [noteData, setNoteData] = useState<{ content?: {}; text?: string }>({});
 	const [makeDraftDiscussionsPublic, setMakeDraftDiscussionsPublic] = useState(false);
 	const [isCreatingRelease, setIsCreatingRelease] = useState(false);
 	const [createdRelease, setCreatedRelease] = useState(false);
 	const [releaseError, setReleleaseError] = useState(null);
 	const { releases } = pubData;
 	const releaseCount = releases ? releases.length : 0;
-	// @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
-	const latestRelease = releases[releaseCount - 1];
+	const latestRelease = releases[releaseCount - 1]!;
 
 	const handleCreateRelease = async () => {
 		setIsCreatingRelease(true);
 		createRelease({
 			communityId: communityData.id,
 			pubId: pubData.id,
-			// @ts-expect-error ts-migrate(2339) FIXME: Property 'content' does not exist on type '{}'.
 			noteContent: noteData.content,
-			// @ts-expect-error ts-migrate(2339) FIXME: Property 'text' does not exist on type '{}'.
 			noteText: noteData.text,
-			draftKey: historyData.latestKey,
+			historyKey: historyData.latestKey,
 			makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		})
 			.then((release) => {
 				setReleleaseError(null);
 				setCreatedRelease(release);
 				setIsCreatingRelease(false);
-				updatePubData((currentPubData) => {
-					return {
-						releases: [...currentPubData.releases, release],
-					};
-				});
+				onCreateRelease(release);
 			})
 			.catch((err) => {
 				setReleleaseError(err);
@@ -293,5 +280,5 @@ const PubReleaseDialog = (props: Props) => {
 		</Dialog>
 	);
 };
-PubReleaseDialog.defaultProps = defaultProps;
+
 export default PubReleaseDialog;

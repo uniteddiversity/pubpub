@@ -50,6 +50,10 @@ export const getBranchRef = (pubId, branchId) => {
 	return database?.ref(`pub-${pubId}/branch-${branchId}`);
 };
 
+export const getDatabaseRef = (refPath) => {
+	return database?.ref(refPath);
+};
+
 const maybeAddKeyTimestampPair = (key, timestamp) => {
 	if (typeof key === 'number' && key >= 0) {
 		return { [key]: timestamp };
