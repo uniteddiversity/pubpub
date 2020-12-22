@@ -32,14 +32,7 @@ type Props = {
 	onCreateRelease: (r: Release) => unknown;
 };
 
-const createRelease = ({
-	historyKey,
-	pubId,
-	communityId,
-	noteContent,
-	noteText,
-	makeDraftDiscussionsPublic,
-}) =>
+const createRelease = ({ historyKey, pubId, communityId, noteContent, noteText }) =>
 	apiFetch('/api/releases', {
 		method: 'POST',
 		body: JSON.stringify({
@@ -48,7 +41,6 @@ const createRelease = ({
 			noteContent: noteContent,
 			noteText: noteText,
 			historyKey: historyKey,
-			makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		}),
 	});
 
@@ -61,7 +53,6 @@ const PubReleaseDialog = (props: Props) => {
 		},
 	} = usePageContext();
 	const [noteData, setNoteData] = useState<{ content?: {}; text?: string }>({});
-	const [makeDraftDiscussionsPublic, setMakeDraftDiscussionsPublic] = useState(false);
 	const [isCreatingRelease, setIsCreatingRelease] = useState(false);
 	const [createdRelease, setCreatedRelease] = useState(false);
 	const [releaseError, setReleleaseError] = useState(null);
@@ -77,7 +68,6 @@ const PubReleaseDialog = (props: Props) => {
 			noteContent: noteData.content,
 			noteText: noteData.text,
 			historyKey: historyData.latestKey,
-			makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		})
 			.then((release) => {
 				setReleleaseError(null);
@@ -258,15 +248,6 @@ const PubReleaseDialog = (props: Props) => {
 							// @ts-expect-error ts-migrate(2322) FIXME: Type 'string' is not assignable to type 'undefined... Remove this comment to see the full error message
 							placeholder="(optional) Add a note describing this new Release.&#13;&#10;This will be included in the publicly-visible changelog of this Pub."
 						/>
-						{isSuperAdmin && (
-							<Checkbox
-								checked={makeDraftDiscussionsPublic}
-								onChange={() =>
-									setMakeDraftDiscussionsPublic(!makeDraftDiscussionsPublic)
-								}
-								label="Make all discussions on the draft visible to the public"
-							/>
-						)}
 					</React.Fragment>
 				)}
 				{renderReleaseResult()}

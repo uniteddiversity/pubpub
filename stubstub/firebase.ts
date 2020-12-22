@@ -11,9 +11,13 @@ type EditorSchema = typeof editorSchema;
 type TransformFn = (t: Transform<EditorSchema>, s: EditorSchema) => void;
 
 export const editFirebaseDraftByRef = async (ref: Reference, { branchId = 'no-branch' } = {}) => {
-	const firebaseDocInfo = await getFirebaseDoc(ref, editorSchema);
-	let doc = Node.fromJSON(editorSchema, firebaseDocInfo.doc);
-	let currentKey = firebaseDocInfo.key;
+	const fetchDoc = async () => {
+		const { key, doc: docJson } = await getFirebaseDoc(ref, editorSchema);
+		const doc = Node.fromJSON(editorSchema, docJson);
+		return { key: key, doc: doc };
+	};
+
+	let { doc, key: currentKey } = await fetchDoc();
 	let pendingSteps: Step[] = [];
 
 	const api = {
@@ -32,8 +36,10 @@ export const editFirebaseDraftByRef = async (ref: Reference, { branchId = 'no-br
 		},
 		clearChanges: async () => {
 			await ref.child(`changes`).remove();
+			const refetch = await fetchDoc();
+			doc = refetch.doc;
+			currentKey = refetch.key;
 			pendingSteps = [];
-			currentKey = -1;
 		},
 		getDoc: () => {
 			return doc;

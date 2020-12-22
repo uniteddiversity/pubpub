@@ -315,6 +315,8 @@ export type DiscussionAnchor = {
 	historyKey: number;
 	selection: null | {};
 	originalText: string;
+	originalTextPrefix: string;
+	originalTextSuffix: string;
 	isOriginal: boolean;
 };
 

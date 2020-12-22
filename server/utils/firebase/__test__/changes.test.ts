@@ -20,9 +20,14 @@ describe('getStepsInChangeRange', () => {
 			tr.replaceRangeWith(0, 10, schema.text('Okay just one more'));
 		});
 		await editor.writeChange();
+		const [zeroToTwo, negativeOneToTwo] = await Promise.all([
+			getStepsInChangeRange(editor.getRef(), 0, 2),
+			getStepsInChangeRange(editor.getRef(), -1, 2),
+		]);
+		expect(zeroToTwo).toEqual(negativeOneToTwo);
+		expect(zeroToTwo).toMatchSnapshot();
 		expect(await getStepsInChangeRange(editor.getRef(), 0, 0)).toMatchSnapshot();
 		expect(await getStepsInChangeRange(editor.getRef(), 0, 1)).toMatchSnapshot();
 		expect(await getStepsInChangeRange(editor.getRef(), 1, 2)).toMatchSnapshot();
-		expect(await getStepsInChangeRange(editor.getRef(), 0, 2)).toMatchSnapshot();
 	});
 });

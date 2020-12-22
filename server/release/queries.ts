@@ -2,18 +2,12 @@ import { Op } from 'sequelize';
 import admin from 'firebase-admin';
 
 import { Release, Branch, Doc, Discussion, DiscussionAnchor, sequelize } from 'server/models';
-import {
-	mergeFirebaseBranch,
-	getLatestKey,
-	getBranchDoc,
-	getBranchRef,
-} from 'server/utils/firebaseAdmin';
-import { updateVisibilityForDiscussions } from 'server/discussion/queries';
+import { mergeFirebaseBranch, getBranchDoc, getBranchRef } from 'server/utils/firebaseAdmin';
 import { createBranchExports } from 'server/export/queries';
 import { createDoc } from 'server/doc/queries';
 import { getStepsInChangeRange, getDocFromJson } from 'server/utils/firebase';
 import { createUpdatedDiscussionAnchorForNewSteps } from 'server/discussionAnchor/queries';
-import { Maybe, Release as ReleaseType, DefinitelyHas } from 'utils/types';
+import { Maybe, Release as ReleaseType, DefinitelyHas, Doc as DocType } from 'utils/types';
 
 type ReleaseErrorReason = 'merge-failed' | 'duplicate-release';
 export class ReleaseQueryError extends Error {
@@ -41,7 +35,7 @@ const getStepsSinceLastRelease = async (
 ) => {
 	if (previousRelease) {
 		const { historyKey: previousHistoryKey } = previousRelease;
-		return getStepsInChangeRange(draftRef, previousHistoryKey, currentHistoryKey);
+		return getStepsInChangeRange(draftRef, previousHistoryKey + 1, currentHistoryKey);
 	}
 	return [];
 };
@@ -50,11 +44,14 @@ const createDiscussionAnchorsForRelease = async (
 	pubId: string,
 	draftBranchId: string,
 	previousRelease: Maybe<DefinitelyHas<ReleaseType, 'doc'>>,
+	currentDocJson: {},
 	currentHistoryKey: number,
 	postgresTransaction: any,
 ) => {
 	const draftRef = getBranchRef(pubId, draftBranchId)!;
 	if (previousRelease) {
+		const previousDocHydrated = getDocFromJson(previousRelease.doc.content);
+		const currentDocHydrated = getDocFromJson(currentDocJson);
 		const steps = await getStepsSinceLastRelease(draftRef, previousRelease, currentHistoryKey);
 		const discussions = await Discussion.findAll({
 			where: { pubId: pubId },
@@ -63,14 +60,15 @@ const createDiscussionAnchorsForRelease = async (
 		const existingAnchors = await DiscussionAnchor.findAll({
 			where: {
 				discussionId: { [Op.in]: discussions.map((d) => d.id) },
-				historyKey: currentHistoryKey,
+				historyKey: previousRelease.historyKey,
 			},
 		});
 		await Promise.all(
 			existingAnchors.map((anchor) =>
 				createUpdatedDiscussionAnchorForNewSteps(
 					anchor,
-					getDocFromJson(previousRelease.doc.content),
+					previousDocHydrated,
+					currentDocHydrated,
 					steps,
 					currentHistoryKey,
 					postgresTransaction,
@@ -86,17 +84,16 @@ export const createRelease = async ({
 	historyKey,
 	noteContent,
 	noteText,
-	makeDraftDiscussionsPublic,
 	createExports = true,
 }) => {
 	const mostRecentRelease = await Release.findOne({
 		where: { pubId: pubId },
-		order: [['createdAt', 'DESC']],
+		order: [['historyKey', 'DESC']],
 		include: [{ model: Doc, as: 'doc' }],
 	});
 
 	if (mostRecentRelease && mostRecentRelease.historyKey === historyKey) {
-		throw new Error('Cannot create a duplicate Release');
+		throw new ReleaseQueryError('duplicate-release');
 	}
 
 	const { draftBranch, publicBranch } = await getBranchesForPub(pubId);
@@ -121,6 +118,7 @@ export const createRelease = async ({
 				pubId,
 				draftBranch.id,
 				mostRecentRelease,
+				nextDoc,
 				historyKey,
 				txn,
 			),
@@ -128,7 +126,7 @@ export const createRelease = async ({
 		return nextRelease;
 	});
 
-	await mergeFirebaseBranch(pubId, draftBranch.id, publicBranch.id, makeDraftDiscussionsPublic);
+	await mergeFirebaseBranch(pubId, draftBranch.id, publicBranch.id);
 
 	if (createExports) {
 		await createBranchExports(pubId, publicBranch.id);

@@ -47,10 +47,10 @@ const findDiscussionWithUser = (id) =>
 	});
 
 type CreateDiscussionOpts = {
-	discussionId?: string;
 	pubId: string;
-	branchId: string;
-	title: string;
+	branchId?: string;
+	discussionId?: string;
+	title?: string;
 	text: string;
 	content: {};
 	historyKey: number;
@@ -130,17 +130,19 @@ export const createDiscussion = async (options: CreateDiscussionOpts, userId: st
 		pubId: pubId,
 	});
 
-	const { from, to, exact, prefix, suffix } = initAnchorData;
-	await createOriginalDiscussionAnchor({
-		discussionId: newDiscussion.id,
-		historyKey: historyKey,
-		// If someday we wish to support Node selections we can pass a serialized Selection object
-		// from the client instead of synthesizing one here.
-		selectionJson: { head: Math.max(from, to), anchor: Math.min(from, to) },
-		originalText: exact,
-		originalTextPrefix: prefix,
-		originalTextSuffix: suffix,
-	});
+	if (initAnchorData) {
+		const { from, to, exact, prefix, suffix } = initAnchorData;
+		await createOriginalDiscussionAnchor({
+			discussionId: newDiscussion.id,
+			historyKey: historyKey,
+			// If someday we wish to support Node selections we can pass a serialized Selection
+			// from the client instead of synthesizing one here.
+			selectionJson: { type: 'text', head: Math.max(from, to), anchor: Math.min(from, to) },
+			originalText: exact,
+			originalTextPrefix: prefix,
+			originalTextSuffix: suffix,
+		});
+	}
 
 	return findDiscussionWithUser(newDiscussion.id);
 };

@@ -6,18 +6,10 @@ import { createRelease, ReleaseQueryError } from './queries';
 
 const getRequestValues = (req) => {
 	const user = req.user || {};
-	const {
-		communityId,
-		historyKey,
-		makeDraftDiscussionsPublic,
-		noteContent,
-		noteText,
-		pubId,
-	} = req.body;
+	const { communityId, historyKey, noteContent, noteText, pubId } = req.body;
 	return {
 		communityId: communityId,
 		historyKey: historyKey,
-		makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 		noteContent: noteContent,
 		noteText: noteText,
 		pubId: pubId,
@@ -28,15 +20,9 @@ const getRequestValues = (req) => {
 app.post(
 	'/api/releases',
 	wrap(async (req, res) => {
-		const {
-			communityId,
-			historyKey,
-			makeDraftDiscussionsPublic,
-			noteContent,
-			noteText,
-			pubId,
-			userId,
-		} = getRequestValues(req);
+		const { communityId, historyKey, noteContent, noteText, pubId, userId } = getRequestValues(
+			req,
+		);
 		const permissions = await getPermissions({
 			userId: userId,
 			pubId: pubId,
@@ -54,7 +40,6 @@ app.post(
 				historyKey: historyKey,
 				noteText: noteText,
 				noteContent: noteContent,
-				makeDraftDiscussionsPublic: makeDraftDiscussionsPublic,
 			});
 
 			return res.status(201).json(release);

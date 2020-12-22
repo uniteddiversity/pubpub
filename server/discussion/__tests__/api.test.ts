@@ -3,7 +3,7 @@ import uuid from 'uuid';
 
 import { setup, teardown, login, stub, modelize } from 'stubstub';
 
-import { Discussion, Thread, ThreadComment } from 'server/models';
+import { Discussion, DiscussionAnchor, Thread, ThreadComment } from 'server/models';
 import * as firebaseAdmin from 'server/utils/firebaseAdmin';
 
 let firebaseStub;
@@ -88,6 +88,7 @@ const makeDiscussion = ({
 	threadNumber,
 	title = 'Uhh yeah a title',
 	content = 'Some test content',
+	historyKey = 0,
 	...whateverElse
 }: {
 	pub: { id: string };
@@ -97,6 +98,7 @@ const makeDiscussion = ({
 	title?: string;
 	content?: string;
 	text?: string;
+	historyKey?: number;
 	initAnchorData?: {
 		from: number;
 		to: number;
@@ -111,6 +113,7 @@ const makeDiscussion = ({
 		communityId: community.id,
 		threadNumber: threadNumber,
 		visibilityAccess: visibilityAccess,
+		historyKey: historyKey,
 		...whateverElse,
 	};
 };
@@ -175,6 +178,32 @@ it('creates a database entry', async () => {
 	});
 
 	expect(relatedThread.comments[0].text).toEqual('Hello world!');
+});
+
+it('creates a DiscussionAnchor when initAnchorData is provided', async () => {
+	const { guest, releasePub } = models;
+	const agent = await login(guest);
+
+	const {
+		body: { id: discussionId },
+	} = await agent
+		.post('/api/discussions')
+		.send(
+			makeDiscussion({
+				pub: releasePub,
+				text: 'Hello world!',
+				visibilityAccess: 'public',
+				initAnchorData: { from: 10, to: 20 },
+				historyKey: 20,
+			}),
+		)
+		.expect(201);
+
+	const anchor = await DiscussionAnchor.findOne({
+		where: { discussionId: discussionId, historyKey: 20 },
+	});
+	expect(anchor.selection).toEqual({ type: 'text', anchor: 10, head: 20 });
+	expect(anchor.isOriginal).toEqual(true);
 });
 
 it('respects client-created discussion IDs', async () => {

@@ -8,30 +8,39 @@ import { DiscussionAnchor as DiscussionAnchorType } from 'utils/types';
 /**
  * Persists a new anchor for an existing one based on changes to a Prosemirror document.
  * @param anchor an anchor model that will be updated and stored with a later history key
- * @param doc the document that the anchor belongs to (implicitly, with the same history key in some context)
+ * @param previousDoc the document that the anchor belongs to (implicitly, with the same history key in some context)
  * @param steps some steps to apply to the document to compute the new anchor position
  * @param the history key that (doc + steps) corresponds to
  */
 export const createUpdatedDiscussionAnchorForNewSteps = async (
 	anchor: DiscussionAnchorType,
-	doc: Node,
+	previousDoc: Node,
+	currentDoc: Node,
 	steps: Step[],
 	historyKey: number,
 	postgresTxn: any = null,
 ) => {
-	const { originalText, discussionId, selection: previousSelectionSerialized } = anchor;
+	const {
+		originalText,
+		originalTextPrefix,
+		originalTextSuffix,
+		discussionId,
+		selection: previousSelectionSerialized,
+	} = anchor;
 	if (!previousSelectionSerialized) {
 		return DiscussionAnchor.create({
 			historyKey: historyKey,
 			discussionId: discussionId,
 			originalText: originalText,
+			originalTextPrefix: originalTextPrefix,
+			originalTextSuffix: originalTextSuffix,
 			selection: null,
 			isOriginal: false,
 		});
 	}
 	const mapping = new Mapping(steps.map((step) => step.getMap()));
-	const previousSelection = Selection.fromJSON(doc, previousSelectionSerialized);
-	const nextSelection = previousSelection.map(doc, mapping);
+	const previousSelection = Selection.fromJSON(previousDoc, previousSelectionSerialized);
+	const nextSelection = previousSelection.map(currentDoc, mapping);
 	// Even if the resulting selection is empty -- and thus represents a discussion that has become
 	// un-anchored -- we still create an anchor to express this information so we don't spend time
 	// recalculating it.
@@ -41,6 +50,8 @@ export const createUpdatedDiscussionAnchorForNewSteps = async (
 			historyKey: historyKey,
 			discussionId: discussionId,
 			originalText: originalText,
+			originalTextPrefix: originalTextPrefix,
+			originalTextSuffix: originalTextSuffix,
 			selection: nextSelectionSerialized,
 			isOriginal: false,
 		},
@@ -58,7 +69,8 @@ export const createOriginalDiscussionAnchor = async ({
 }: {
 	discussionId: string;
 	historyKey: number;
-	selectionJson: { head: number; anchor: number };
+	// The type of selectionJson may be widened in the future to support non-text Selections
+	selectionJson: { type: 'text'; head: number; anchor: number };
 	originalText: string;
 	originalTextPrefix?: string;
 	originalTextSuffix?: string;
