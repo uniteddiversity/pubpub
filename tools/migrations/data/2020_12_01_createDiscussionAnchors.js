@@ -1,30 +1,25 @@
 /* eslint-disable no-console */
 import { Op } from 'sequelize';
+import { uncompressSelectionJSON } from 'prosemirror-compress-pubpub';
 
 import { Anchor, Branch, Pub, Release, Discussion } from 'server/models';
 import { getBranchRef } from 'server/utils/firebaseAdmin';
-import { uncompressSelectionJSON } from 'prosemirror-compress-pubpub';
+import { createOriginalDiscussionAnchor } from 'server/discussionAnchor/queries';
 
 import { forEach } from '../util';
 
-const getAnchorDescsFromSingleFirebaseDiscussion = (firebaseDiscussion, isPublicBranch) => {
+const getAnchorDescsFromSingleFirebaseDiscussion = (
+	discussionId,
+	firebaseDiscussion,
+	isPublicBranch,
+) => {
 	if (firebaseDiscussion) {
-		const {
-			initKey,
-			initHead,
-			initAnchor,
-			currentKey,
-			selection: compressedSelection,
-		} = firebaseDiscussion;
+		const { currentKey, selection: compressedSelection } = firebaseDiscussion;
 		const selection = uncompressSelectionJSON(compressedSelection);
 		return [
 			{
-				historyKey: initKey,
-				head: initHead,
-				anchor: initAnchor,
-				isPublicBranch: isPublicBranch,
-			},
-			{
+				source: 'firebase-current',
+				discussionId: discussionId,
 				historyKey: currentKey,
 				head: selection.head,
 				anchor: selection.anchor,
@@ -42,6 +37,7 @@ const getAnchorDescsFromFirebaseDiscussions = ({
 	return discussions
 		.map((discussion) =>
 			getAnchorDescsFromSingleFirebaseDiscussion(
+				discussion.id,
 				firebaseDiscussions[discussion.id],
 				isPublicBranch,
 			),
@@ -51,13 +47,49 @@ const getAnchorDescsFromFirebaseDiscussions = ({
 
 const mapAnchorDescsToDraft = (anchorDescs, releases) => {
 	return anchorDescs.map((anchor) => {
-		const { isPublicBranch, historyKey } = anchor;
+		const { isPublicBranch, historyKey, source } = anchor;
 		if (isPublicBranch) {
 			const correspondingRelease = releases[Math.min(historyKey, releases.length - 1)];
-			const draftKey = correspondingRelease.historyKey;
-			return { ...anchor, historyKey: draftKey };
+			if (correspondingRelease) {
+				const draftKey = correspondingRelease.historyKey;
+				return { ...anchor, historyKey: draftKey, source: `mapped-${source}` };
+			}
 		}
 		return anchor;
+	});
+};
+
+const dedupeAnchorDescs = (descs) => {
+	const uniqueDescsByKey = {};
+	descs.forEach((desc) => {
+		const { head, anchor, discussionId, historyKey, source } = desc;
+		const key = `${discussionId}__${historyKey}`;
+		const currentDesc = uniqueDescsByKey[key];
+		if (currentDesc) {
+			const { anchor: hasAnchor, head: hasHead, source: hasSource } = currentDesc;
+			if (head !== hasHead || anchor !== hasAnchor) {
+				console.warn(
+					`Found disagreeing (head, anchor) for ${discussionId} at ${historyKey}: (${hasSource}, ${hasAnchor}, ${hasHead}), (${source}, ${anchor}, ${head})`,
+				);
+			} else {
+				uniqueDescsByKey[key] = currentDesc.exact ? currentDesc : desc;
+			}
+		} else {
+			uniqueDescsByKey[key] = desc;
+		}
+	});
+	return Object.values(uniqueDescsByKey);
+};
+
+const createAnchorModelFromDesc = (desc) => {
+	const { discussionId, head, anchor, historyKey, prefix, suffix, exact } = desc;
+	return createOriginalDiscussionAnchor({
+		discussionId: discussionId,
+		historyKey: historyKey,
+		originalText: exact,
+		originalTextSuffix: suffix,
+		originalTextPrefix: prefix,
+		selectionJson: { type: 'text', head: head, anchor: anchor },
 	});
 };
 
@@ -92,6 +124,7 @@ const handlePub = async (pub) => {
 			if (anchor) {
 				const { from, to, prefix, suffix, exact, branchId, branchKey } = anchor;
 				return {
+					discussionId: discussion.id,
 					anchor: from,
 					head: to,
 					prefix: prefix,
@@ -99,6 +132,7 @@ const handlePub = async (pub) => {
 					exact: exact,
 					isPublicBranch: branchId === publicBranch.id,
 					historyKey: branchKey,
+					source: 'model',
 				};
 			}
 			return null;
@@ -106,13 +140,15 @@ const handlePub = async (pub) => {
 		.filter((x) => x);
 	anchorDescs.push(...anchorModelDescs);
 	const draftMappedAnchorDescs = mapAnchorDescsToDraft(anchorDescs, releases);
-	console.log(pub.title, draftMappedAnchorDescs);
+	const dedupedAnchorDescs = dedupeAnchorDescs(draftMappedAnchorDescs);
+	await Promise.all(dedupedAnchorDescs.map(createAnchorModelFromDesc));
+	console.log(pub.id);
 };
 
 module.exports = async () => {
 	const discussions = await Discussion.findAll({ attributes: ['id', 'pubId'] });
 	const pubIdsWithDiscussions = [...new Set(discussions.map((d) => d.pubId))];
 	console.log(pubIdsWithDiscussions.length);
-	// const pubs = await Pub.findAll({ where: { id: { [Op.in]: pubIdsWithDiscussions } } });
-	// await forEach(pubs, (p) => handlePub(p).catch((err) => console.error(err)));
+	const pubs = await Pub.findAll({ where: { id: { [Op.in]: pubIdsWithDiscussions } } });
+	await forEach(pubs, (p) => handlePub(p).catch((err) => console.error(err)), 10);
 };
